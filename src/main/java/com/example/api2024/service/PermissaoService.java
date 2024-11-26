@@ -79,98 +79,89 @@ public class PermissaoService {
 
         return permissaoRepository.save(permissao);
     }
-    // Aceitar uma solicitação de criação, edição ou exclusão
     @Transactional
-    public Permissao aceitarSolicitacao(Long permissaoId, Long adminAprovadorId) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
+    public Permissao aceitarSolicitacao(Long permissaoId, Long adminAprovadorId) {
+        // Buscar a solicitação e o administrador aprovador
         Permissao permissao = permissaoRepository.findById(permissaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Solicitação não encontrada"));
         Adm adminAprovador = admRepository.findById(adminAprovadorId)
                 .orElseThrow(() -> new IllegalArgumentException("Administrador não encontrado"));
 
+        // Verificar o status da solicitação
         if (!"Pendente".equals(permissao.getStatusSolicitado())) {
             throw new IllegalStateException("A solicitação já foi processada");
         }
 
+        // Variável para o projeto a ser criado ou atualizado
         Projeto projeto = null;
 
+        // Processar o JSON da solicitação para extrair o projeto
         if (permissao.getInformacaoProjeto() != null) {
             try {
                 projeto = objectMapper.readValue(permissao.getInformacaoProjeto(), Projeto.class);
+
             } catch (Exception e) {
-                throw new IllegalArgumentException("Erro ao processar informações do projeto", e);
+                throw new IllegalArgumentException("Erro ao processar informações do projeto: " + e.getMessage(), e);
             }
         }
 
-        Projeto projetoAntigo = permissao.getProjeto();
-
-        // Tratamento de Criação
+        // Verificar o tipo de ação e processar
         if ("Criacao".equals(permissao.getTipoAcao()) && projeto != null) {
+            // Configurar campos do projeto antes de salvar
             projeto.setAdm(adminAprovador);
             projeto.setSituacao(projeto.getDataTermino().isAfter(LocalDate.now()) ? "Em Andamento" : "Encerrado");
+
+            // Salvar o novo projeto
             Projeto novoProjeto = projetoRepository.save(projeto);
+
+            // Transferir arquivos relacionados à permissão para o projeto
             transferirArquivosParaProjeto(permissao, novoProjeto);
+
+            // Associar o projeto à permissão
             permissao.setProjeto(novoProjeto);
 
-            historicoService.cadastrarHistorico(
-                    permissao.getAdminSolicitanteId(),
-                    "criacao",
-                    "projeto",
-                    novoProjeto.getId(),
-                    null,
-                    objectMapper.writeValueAsString(novoProjeto)
-            );
-        };
-        // Tratamento de Edição
-        if ("Editar".equals(permissao.getTipoAcao()) && projeto != null) {
+        } else if ("Editar".equals(permissao.getTipoAcao()) && projeto != null) {
+            // Buscar o projeto existente associado à permissão
             Projeto projetoExistente = permissao.getProjeto();
             if (projetoExistente != null) {
-                // Atualizar o projeto existente com os novos dados
+                // Atualizar os campos do projeto existente
                 atualizarProjeto(projetoExistente, projeto);
 
-                // Salvar o projeto atualizado no banco de dados
+                // Configurar campos do projeto antes de salvar
                 projetoExistente.setAdm(adminAprovador);
                 projetoExistente.setSituacao(projeto.getDataTermino().isAfter(LocalDate.now()) ? "Em Andamento" : "Encerrado");
+
+                // Salvar o projeto atualizado
                 projetoRepository.save(projetoExistente);
 
-                // Transferir arquivos se existirem
+                // Transferir arquivos relacionados à permissão para o projeto atualizado
                 transferirArquivosParaProjeto(permissao, projetoExistente);
-
-                historicoService.cadastrarHistorico(
-                        permissao.getAdminSolicitanteId(),
-                        "edicao",
-                        "projeto",
-                        projetoExistente.getId(),
-                        objectMapper.writeValueAsString(projetoAntigo),
-                        objectMapper.writeValueAsString(projeto)
-                );
+            } else {
+                throw new IllegalArgumentException("Projeto associado à solicitação não encontrado.");
             }
-        }
-        // Tratamento de Exclusão
-        else if ("Exclusao".equals(permissao.getTipoAcao()) && permissao.getProjeto() != null) {
+
+        } else if ("Exclusao".equals(permissao.getTipoAcao()) && permissao.getProjeto() != null) {
+            // Excluir o projeto associado e seus arquivos
             Projeto projetoParaExcluir = permissao.getProjeto();
             arquivoRepository.deleteByProjetoId(projetoParaExcluir.getId());
             projetoRepository.delete(projetoParaExcluir);
+        } else {
+            throw new IllegalArgumentException("Tipo de ação desconhecido ou informações insuficientes para processar.");
         }
 
-        // Atualizar status da permissão
+        // Atualizar o status da permissão
         permissao.setStatusSolicitado("Aprovado");
         permissao.setDataAprovado(LocalDate.now());
         permissao.setAdm(adminAprovador);
 
-        historicoService.cadastrarHistorico(
-                permissao.getAdminSolicitanteId(),
-                "delecao",
-                "projeto",
-                projetoAntigo.getId(),
-                objectMapper.writeValueAsString(projetoAntigo),
-                null
-        );
+        // Salvar a permissão atualizada
         return permissaoRepository.save(permissao);
     }
 
+
     private void atualizarProjeto(Projeto projetoExistente, Projeto projetoAtualizado) {
         projetoExistente.setReferenciaProjeto(projetoAtualizado.getReferenciaProjeto());
+        projetoExistente.setNome(projetoAtualizado.getNome());
         projetoExistente.setEmpresa(projetoAtualizado.getEmpresa());
         projetoExistente.setObjeto(projetoAtualizado.getObjeto());
         projetoExistente.setDescricao(projetoAtualizado.getDescricao());
@@ -182,6 +173,7 @@ public class PermissaoService {
         projetoExistente.setDataTermino(projetoAtualizado.getDataTermino());
         projetoExistente.setSituacao(projetoAtualizado.getDataTermino().isAfter(LocalDate.now()) ? "Em Andamento" : "Encerrado");
     }
+
 
 
 
@@ -197,6 +189,7 @@ public class PermissaoService {
             arquivoRepository.save(novoArquivo);
         }
     }
+
 
     // Listar todas as solicitações pendentes
     public List<Permissao> listarPedidosPendentes() {
