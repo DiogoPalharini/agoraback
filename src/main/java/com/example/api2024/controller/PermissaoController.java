@@ -102,4 +102,17 @@ public class PermissaoController {
         Permissao permissao = permissaoService.negarSolicitacao(id, adminAprovadorId);
         return ResponseEntity.ok(permissao);
     }
+
+    // Endpoint para listar todas as solicitações pendentes
+    @GetMapping("/pedidos")
+    public ResponseEntity<List<Permissao>> listarPedidosPendentes() {
+        try {
+            List<Permissao> pedidosPendentes = permissaoService.listarPedidosPendentes();
+            return ResponseEntity.ok(pedidosPendentes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
 }
