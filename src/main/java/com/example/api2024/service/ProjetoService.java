@@ -1,18 +1,19 @@
 package com.example.api2024.service;
 
 import com.example.api2024.dto.ProjetoDto;
-import com.example.api2024.entity.Adm;
-import com.example.api2024.entity.Arquivo;
-import com.example.api2024.entity.Permissao;
-import com.example.api2024.entity.Projeto;
+import com.example.api2024.entity.*;
 import com.example.api2024.repository.ArquivoRepository;
 import com.example.api2024.repository.PermissaoRepository;
 import com.example.api2024.repository.ProjetoRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -33,10 +34,20 @@ public class ProjetoService {
     @Autowired
     private AdmService admService;
 
+    @Autowired
+    private HistoricoService historicoService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
 
     public Projeto buscarProjetoPorId(Long id) {
         return projetoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Projeto não encontrado."));
+    }
+    
+    public Projeto buscarProjetoPorReferencia(String referenciaProjeto) {
+        return projetoRepository.findByReferenciaProjeto(referenciaProjeto);
     }
 
     public void cadastrarProjeto(ProjetoDto projetoDto, MultipartFile propostas, MultipartFile contratos, MultipartFile artigos) throws Exception {
@@ -73,12 +84,20 @@ public class ProjetoService {
         projeto.setAdm(administrador);
 
         // Salvando o projeto
-        projetoRepository.save(projeto);
+        Projeto savedProjeto = projetoRepository.save(projeto);
 
         // Salvando os arquivos
         salvarArquivo(propostas, projeto, "Propostas");
         salvarArquivo(contratos, projeto, "Contratos");
         salvarArquivo(artigos, projeto, "Artigos");
+
+        historicoService.cadastrarHistorico(
+                administrador.getId(),
+                "criacao",
+                "projeto",
+                savedProjeto.getId(),
+                null,
+                objectMapper.writeValueAsString(projeto));
     }
 
     // Método para listar todos os projetos
@@ -111,6 +130,7 @@ public class ProjetoService {
 
         Projeto projetoExistente = projetoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Projeto não encontrado com ID: " + id));
+        Projeto projetoAntigo = objectMapper.readValue(objectMapper.writeValueAsString(projetoExistente), Projeto.class);
 
         // Atualizar informações do projeto
         projetoExistente.setReferenciaProjeto(projetoDto.getReferenciaProjeto());
@@ -141,13 +161,33 @@ public class ProjetoService {
         if (contratos != null) salvarArquivo(contratos, projetoExistente, "Contratos");
         if (artigos != null) salvarArquivo(artigos, projetoExistente, "Artigos");
 
+        Adm adminAtual = projetoExistente.getAdm();
+        historicoService.cadastrarHistorico(
+                adminAtual.getId(),
+                "edicao",
+                "projeto",
+                projetoExistente.getId(),
+                objectMapper.writeValueAsString(projetoAntigo),
+                objectMapper.writeValueAsString(projetoExistente)
+        );
+
         return projetoRepository.save(projetoExistente);
     }
 
     // Método para excluir um projeto e seus arquivos associados
     @Transactional
-    public void excluirProjeto(Long projetoId) {
+    public void excluirProjeto(Long projetoId) throws JsonProcessingException {
         Projeto projeto = buscarProjetoPorId(projetoId);
+        Adm adminAtual = projeto.getAdm();
+
+        historicoService.cadastrarHistorico(
+                adminAtual.getId(),
+                "delecao",
+                "projeto",
+                projeto.getId(),
+                objectMapper.writeValueAsString(projeto),
+                null
+        );
 
         List<Permissao> permissoes = permissaoRepository.findByProjetoId(projetoId);
         if (!permissoes.isEmpty()) {

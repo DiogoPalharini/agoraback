@@ -5,7 +5,9 @@ import com.example.api2024.repository.ConvenioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -52,4 +54,17 @@ public class ConvenioService {
         }
         return false;
     }
+
+    public Map<String, Long> getInstituicoesPorTipoConvenio() {
+        List<Object[]> resultados = convenioRepository.countInstituicoesByTipoConvenio();
+        Map<String, Long> instituicoesPorConvenio = new HashMap<>();
+    
+        for (Object[] resultado : resultados) {
+            String tipoConvenio = (String) resultado[0];
+            Long count = (Long) resultado[1];
+            instituicoesPorConvenio.put(tipoConvenio, count);
+        }
+    
+        return instituicoesPorConvenio;
+    }    
 }

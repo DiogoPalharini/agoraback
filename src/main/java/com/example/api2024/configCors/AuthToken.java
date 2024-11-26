@@ -29,23 +29,35 @@ public class AuthToken extends OncePerRequestFilter{
     @SuppressWarnings("null")
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-        throws ServletException, IOException {
+            throws ServletException, IOException {
         try {
+            // Obtém o token JWT da requisição
             String jwt = getToken(request);
+
+            // Mostra o token no console (para depuração)
+            if (jwt != null) {
+                System.out.println("Token recebido no AuthToken filter: " + jwt);
+            }
+
+            // Valida o token e configura a autenticação no contexto de segurança
             if (jwt != null && jwtGenerate.JwtToken(jwt)) {
                 String email = jwtGenerate.UsernameToken(jwt);
                 UserDetails userDetails = admDetailsService.loadUserByUsername(email);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
-            System.out.println(e);
-        } finally {
-
+            System.out.println("Erro no filtro de autenticação: " + e.getMessage());
         }
+
+        // Continua a cadeia de filtros
         filterChain.doFilter(request, response);
     }
+
 
     private String getToken(HttpServletRequest request) {
         String headerToken = request.getHeader("Authorization");

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/convenio")
@@ -64,5 +65,11 @@ public class ConvenioController {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+
+    @GetMapping("/instituicoes-por-convenio")
+    public ResponseEntity<Map<String, Long>> getInstituicoesPorConvenio() {
+        Map<String, Long> response = convenioService.getInstituicoesPorTipoConvenio();
+        return ResponseEntity.ok(response);
     }
 }

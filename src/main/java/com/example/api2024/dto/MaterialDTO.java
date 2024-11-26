@@ -1,33 +1,28 @@
-package com.example.api2024.entity;
+package com.example.api2024.dto;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-@Entity
-public class Material {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class MaterialDTO {
     private Long id;
-
-    @Column(nullable = false)
     private String nome;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "idProjeto", nullable = false)
-    private Projeto projetoAssociado;
-
-    @Column(nullable = false)
+    private String nomeProjeto; // Receberá "referenciaProjeto - nome"
     private Integer quantidadeUsada;
-
-    @Column(nullable = false)
     private BigDecimal valor;
-
-    @Column(nullable = false)
     private String fornecedor;
-
-    @Column(columnDefinition = "TEXT")
     private String descricao;
+
+    // Construtor usado na query
+    public MaterialDTO(Long id, String nome, String referenciaProjeto, String nomeProjeto, Integer quantidadeUsada, BigDecimal valor, String fornecedor, String descricao) {
+        this.id = id;
+        this.nome = nome;
+        this.nomeProjeto = (referenciaProjeto != null && nomeProjeto != null)
+                ? referenciaProjeto + " - " + nomeProjeto
+                : "Projeto não associado"; // Valor padrão caso `projetoAssociado` seja nulo
+        this.quantidadeUsada = quantidadeUsada;
+        this.valor = valor;
+        this.fornecedor = fornecedor;
+        this.descricao = descricao;
+    }
 
     // Getters e Setters
     public Long getId() {
@@ -46,12 +41,12 @@ public class Material {
         this.nome = nome;
     }
 
-    public Projeto getProjetoAssociado() {
-        return projetoAssociado;
+    public String getNomeProjeto() {
+        return nomeProjeto;
     }
 
-    public void setProjetoAssociado(Projeto projetoAssociado) {
-        this.projetoAssociado = projetoAssociado;
+    public void setNomeProjeto(String nomeProjeto) {
+        this.nomeProjeto = nomeProjeto;
     }
 
     public Integer getQuantidadeUsada() {

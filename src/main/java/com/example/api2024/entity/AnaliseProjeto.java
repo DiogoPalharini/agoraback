@@ -18,6 +18,9 @@ public class AnaliseProjeto {
     @Column(nullable = false)
     private BigDecimal valorGasto;
 
+    @Column(nullable = false)
+    private String autor;
+    
     @Lob
     @Column(columnDefinition = "TEXT")
     private String informacoesAdicionais;

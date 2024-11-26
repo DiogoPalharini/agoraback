@@ -1,9 +1,12 @@
 package com.example.api2024.controller;
 
+import com.example.api2024.dto.BolsistaDTO;
 import com.example.api2024.entity.Adm;
 import com.example.api2024.entity.Bolsista;
 import com.example.api2024.repository.AdmRepository;
 import com.example.api2024.repository.BolsistaRepository;
+import com.example.api2024.service.BolsistaService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +26,9 @@ public class BolsistaController {
 
     @Autowired
     private BolsistaRepository bolsistaRepository;
+
+    @Autowired
+    private BolsistaService bolsistaService;
 
     @PostMapping("/criarBolsista")
     public ResponseEntity<Map<String, String>> criarBolsista(
@@ -48,8 +54,8 @@ public class BolsistaController {
     }
 
     @GetMapping("/listar")
-    public ResponseEntity<List<Bolsista>> listarBolsistas() {
-        List<Bolsista> bolsistas = bolsistaRepository.findAll();
+    public ResponseEntity<List<BolsistaDTO>> listarBolsistas() {
+        List<BolsistaDTO> bolsistas = bolsistaService.listarBolsistas();
         return ResponseEntity.ok(bolsistas);
     }
 

@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProjetoRepository extends JpaRepository<Projeto, Long> {
     boolean existsByReferenciaProjeto(String referenciaProjeto);
+    Projeto findByReferenciaProjeto(String referenciaProjeto);
 }

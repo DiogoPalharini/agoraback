@@ -1,6 +1,7 @@
 package com.example.api2024.service;
 
 import com.example.api2024.entity.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.stereotype.Service;
 
 import com.example.api2024.repository.*;
@@ -23,6 +24,7 @@ public class PermissaoService {
     private final ProjetoRepository projetoRepository;
     private final ArquivoRepository arquivoRepository;
     private final ObjectMapper objectMapper;
+    private final HistoricoService historicoService;
 
     // Método para criar uma solicitação com ou sem arquivos
     public Permissao criarSolicitacaoComArquivos(Long adminSolicitanteId, String statusSolicitado,
@@ -79,7 +81,8 @@ public class PermissaoService {
     }
     // Aceitar uma solicitação de criação, edição ou exclusão
     @Transactional
-    public Permissao aceitarSolicitacao(Long permissaoId, Long adminAprovadorId) {
+    public Permissao aceitarSolicitacao(Long permissaoId, Long adminAprovadorId) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
         Permissao permissao = permissaoRepository.findById(permissaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Solicitação não encontrada"));
         Adm adminAprovador = admRepository.findById(adminAprovadorId)
@@ -99,6 +102,8 @@ public class PermissaoService {
             }
         }
 
+        Projeto projetoAntigo = permissao.getProjeto();
+
         // Tratamento de Criação
         if ("Criacao".equals(permissao.getTipoAcao()) && projeto != null) {
             projeto.setAdm(adminAprovador);
@@ -106,9 +111,18 @@ public class PermissaoService {
             Projeto novoProjeto = projetoRepository.save(projeto);
             transferirArquivosParaProjeto(permissao, novoProjeto);
             permissao.setProjeto(novoProjeto);
-        }
+
+            historicoService.cadastrarHistorico(
+                    permissao.getAdminSolicitanteId(),
+                    "criacao",
+                    "projeto",
+                    novoProjeto.getId(),
+                    null,
+                    objectMapper.writeValueAsString(novoProjeto)
+            );
+        };
         // Tratamento de Edição
-        else if ("Editar".equals(permissao.getTipoAcao()) && projeto != null) {
+        if ("Editar".equals(permissao.getTipoAcao()) && projeto != null) {
             Projeto projetoExistente = permissao.getProjeto();
             if (projetoExistente != null) {
                 // Atualizar o projeto existente com os novos dados
@@ -121,6 +135,15 @@ public class PermissaoService {
 
                 // Transferir arquivos se existirem
                 transferirArquivosParaProjeto(permissao, projetoExistente);
+
+                historicoService.cadastrarHistorico(
+                        permissao.getAdminSolicitanteId(),
+                        "edicao",
+                        "projeto",
+                        projetoExistente.getId(),
+                        objectMapper.writeValueAsString(projetoAntigo),
+                        objectMapper.writeValueAsString(projeto)
+                );
             }
         }
         // Tratamento de Exclusão
@@ -134,6 +157,15 @@ public class PermissaoService {
         permissao.setStatusSolicitado("Aprovado");
         permissao.setDataAprovado(LocalDate.now());
         permissao.setAdm(adminAprovador);
+
+        historicoService.cadastrarHistorico(
+                permissao.getAdminSolicitanteId(),
+                "delecao",
+                "projeto",
+                projetoAntigo.getId(),
+                objectMapper.writeValueAsString(projetoAntigo),
+                null
+        );
         return permissaoRepository.save(permissao);
     }
 

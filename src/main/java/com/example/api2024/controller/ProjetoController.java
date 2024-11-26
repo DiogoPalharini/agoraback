@@ -3,6 +3,7 @@ package com.example.api2024.controller;
 import com.example.api2024.dto.ProjetoDto;
 import com.example.api2024.entity.Projeto;
 import com.example.api2024.service.ProjetoService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -44,7 +47,23 @@ public class ProjetoController {
             return ResponseEntity.status(500).body("Erro ao buscar o projeto: " + e.getMessage());
         }
     }
-
+    
+    // Buscar projeto por referência
+    @GetMapping("/referencia")
+    public ResponseEntity<?> buscarProjetoPorReferencia(@RequestParam("referenciaProjeto") String referenciaProjeto) {
+        try {
+            String decodedReferencia = URLDecoder.decode(referenciaProjeto, StandardCharsets.UTF_8.name());
+            System.out.println("Decoded referenciaProjeto: " + decodedReferencia);
+            Projeto projeto = projetoService.buscarProjetoPorReferencia(decodedReferencia);
+            if (projeto != null) {
+                return ResponseEntity.ok(projeto);
+            } else {
+                return ResponseEntity.status(404).body("Projeto não encontrado.");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Erro ao buscar o projeto: " + e.getMessage());
+        }
+    }
 
     // Endpoint para cadastrar um novo projeto
     @PostMapping("/cadastrar")
@@ -54,6 +73,7 @@ public class ProjetoController {
             @RequestPart(value = "contratos", required = false) MultipartFile contratos,
             @RequestPart(value = "artigos", required = false) MultipartFile artigos) throws Exception {
         projetoService.cadastrarProjeto(projetoDto, propostas, contratos, artigos);
+
     }
 
     // Endpoint para editar um projeto existente
@@ -91,7 +111,7 @@ public class ProjetoController {
 
     // Endpoint para excluir um projeto
     @DeleteMapping("/excluir/{id}")
-    public void excluirProjeto(@PathVariable Long id) {
+    public void excluirProjeto(@PathVariable Long id) throws JsonProcessingException {
         projetoService.excluirProjeto(id);
     }
 }
