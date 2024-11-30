@@ -12,7 +12,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -80,12 +83,13 @@ public class PermissaoService {
         return permissaoRepository.save(permissao);
     }
     @Transactional
-    public Permissao aceitarSolicitacao(Long permissaoId, Long adminAprovadorId) {
+    public Permissao aceitarSolicitacao(Long permissaoId, Long adminAprovadorId) throws JsonProcessingException {
         // Buscar a solicitação e o administrador aprovador
         Permissao permissao = permissaoRepository.findById(permissaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Solicitação não encontrada"));
         Adm adminAprovador = admRepository.findById(adminAprovadorId)
                 .orElseThrow(() -> new IllegalArgumentException("Administrador não encontrado"));
+        Long adminSolicitante = permissao.getAdminSolicitanteId();
 
         // Verificar o status da solicitação
         if (!"Pendente".equals(permissao.getStatusSolicitado())) {
@@ -115,10 +119,19 @@ public class PermissaoService {
             Projeto novoProjeto = projetoRepository.save(projeto);
 
             // Transferir arquivos relacionados à permissão para o projeto
-            transferirArquivosParaProjeto(permissao, novoProjeto);
+            List <Long> jsonIds = transferirArquivosParaProjeto(permissao, novoProjeto);
 
             // Associar o projeto à permissão
             permissao.setProjeto(novoProjeto);
+
+            historicoService.cadastrarHistorico(
+                    adminSolicitante,
+                    "criacao",
+                    "projeto",
+                    novoProjeto.getId(),
+                    objectMapper.writeValueAsString(novoProjeto),
+                    jsonIds.toString()
+            );
 
         } else if ("Editar".equals(permissao.getTipoAcao()) && projeto != null) {
             // Buscar o projeto existente associado à permissão
@@ -132,10 +145,33 @@ public class PermissaoService {
                 projetoExistente.setSituacao(projeto.getDataTermino().isAfter(LocalDate.now()) ? "Em Andamento" : "Encerrado");
 
                 // Salvar o projeto atualizado
-                projetoRepository.save(projetoExistente);
+                Projeto novoProjeto = projetoRepository.save(projetoExistente);
+
+                Historico ultimoHistorico = historicoService.buscarUltimoHistoricoPorIdAlterado(novoProjeto.getId(), "projeto");
+                String idsArquivosAntigos = ultimoHistorico.getArquivos();
+
+                // Convertendo arquivos antigos em List <Long> para poder incrementar a lista
+                List<Long> listaArquivosAntigos = Arrays.stream(idsArquivosAntigos.replaceAll("[\\[\\]]", "").split(","))
+                        .filter(id -> !id.isBlank()) // Evitar erros com entradas vazias
+                        .map(String::trim)
+                        .map(Long::parseLong)
+                        .collect(Collectors.toList());
 
                 // Transferir arquivos relacionados à permissão para o projeto atualizado
-                transferirArquivosParaProjeto(permissao, projetoExistente);
+                List <Long> listaArquivosNovos = transferirArquivosParaProjeto(permissao, projetoExistente);
+
+                // Incrementar a lista de arquivos antigos com os novos arquivos
+                listaArquivosAntigos.addAll(listaArquivosNovos);
+                String listaArquivosAtualizados = listaArquivosAntigos.toString();
+
+                historicoService.cadastrarHistorico(
+                        adminSolicitante,
+                        "edicao",
+                        "projeto",
+                        projetoExistente.getId(),
+                        objectMapper.writeValueAsString(novoProjeto),
+                        listaArquivosAtualizados
+                );
             } else {
                 throw new IllegalArgumentException("Projeto associado à solicitação não encontrado.");
             }
@@ -143,7 +179,23 @@ public class PermissaoService {
         } else if ("Exclusao".equals(permissao.getTipoAcao()) && permissao.getProjeto() != null) {
             // Excluir o projeto associado e seus arquivos
             Projeto projetoParaExcluir = permissao.getProjeto();
-            arquivoRepository.deleteByProjetoId(projetoParaExcluir.getId());
+
+            historicoService.cadastrarHistorico(
+                    permissao.getAdminSolicitanteId(),
+                    "delecao",
+                    "projeto",
+                    projetoParaExcluir.getId(),
+                    null,
+                    null
+            );
+
+            List<Arquivo> arquivos = arquivoRepository.findByProjetoId(projetoParaExcluir.getId());
+            if (!arquivos.isEmpty()) {
+                for (Arquivo arquivo : arquivos) {
+                    arquivoRepository.deleteProjetoId(arquivo.getId());
+                }
+            }
+
             projetoRepository.delete(projetoParaExcluir);
         } else {
             throw new IllegalArgumentException("Tipo de ação desconhecido ou informações insuficientes para processar.");
@@ -177,8 +229,9 @@ public class PermissaoService {
 
 
 
-    private void transferirArquivosParaProjeto(Permissao permissao, Projeto projeto) {
+    private List<Long> transferirArquivosParaProjeto(Permissao permissao, Projeto projeto) {
         List<PermissaoArquivo> arquivosPermissao = permissaoArquivoRepository.findByPermissaoId(permissao.getId());
+        List<Long> ids = new ArrayList<>();
         for (PermissaoArquivo arquivoPermissao : arquivosPermissao) {
             Arquivo novoArquivo = new Arquivo();
             novoArquivo.setNomeArquivo(arquivoPermissao.getNomeArquivo());
@@ -187,7 +240,9 @@ public class PermissaoService {
             novoArquivo.setTipoDocumento(arquivoPermissao.getTipoDocumento());
             novoArquivo.setProjeto(projeto);
             arquivoRepository.save(novoArquivo);
+            ids.add(novoArquivo.getId());
         }
+        return ids;
     }
 
 

@@ -15,22 +15,31 @@ public class HistoricoController {
     @Autowired
     private HistoricoService historicoService;
 
-    @PostMapping("/cadastrar")
-    public ResponseEntity<Historico> cadastrarHistorico(@RequestBody Historico historico) {
-        Historico novoHistorico = historicoService.cadastrarHistorico(
-                historico.getAdmAlterador(),
-                historico.getAlteracao(),
-                historico.getAlterado(),
-                historico.getIdAlterado(),
-                historico.getDadosAntigos(),
-                historico.getDadosNovos()
-        );
-        return ResponseEntity.ok(novoHistorico);
+    @GetMapping("/listar")
+    public List<Historico> listarHistorico() {
+        return historicoService.listarHistorico();
     }
 
-    @GetMapping("/listar")
-    public ResponseEntity<List<Historico>> listarHistorico() {
-        List<Historico> historicos = historicoService.listarHistorico();
-        return ResponseEntity.ok(historicos);
+    @GetMapping("/ultimo/{idAlterado}/{alterado}")
+    public ResponseEntity<?> buscarUltimoHistorico(@PathVariable Long idAlterado, @PathVariable String alterado) {
+        Historico historico = historicoService.buscarUltimoHistoricoPorIdAlterado(idAlterado, alterado);
+        if (historico == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(historico);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> buscarHistoricoPorId(@PathVariable Long id) {
+        try {
+            Historico historico = historicoService.buscarHistoricoPorId(id);
+            if (historico != null) {
+                return ResponseEntity.ok(historico);
+            } else {
+                return ResponseEntity.status(404).body("Historico não encontrado.");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Erro ao buscar historico: " + e.getMessage());
+        }
     }
 }

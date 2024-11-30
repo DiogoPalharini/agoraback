@@ -13,18 +13,30 @@ public class HistoricoService {
     @Autowired
     private HistoricoRepository historicoRepository;
 
-    public Historico cadastrarHistorico(Long admAlterador, String alteracao, String alterado, Long idAlterado, String dadosAntigos, String dadosNovos) {
+    public Historico cadastrarHistorico(Long admAlterador, String alteracao, String alterado, Long idAlterado, String dados,  String arquivos) {
         Historico historico = new Historico();
         historico.setAdmAlterador(admAlterador);
         historico.setAlteracao(alteracao);
         historico.setAlterado(alterado);
         historico.setIdAlterado(idAlterado);
-        historico.setDadosAntigos(dadosAntigos);
-        historico.setDadosNovos(dadosNovos);
+        historico.setDados(dados);
+        historico.setArquivos(arquivos);
         return historicoRepository.save(historico);
+    }
+
+    public Historico buscarUltimoHistoricoPorIdAlterado(Long idAlterado, String alterado) {
+        return historicoRepository.findHistoricosByIdAlterado(idAlterado, alterado)
+                .stream()
+                .findFirst()
+                .orElse(null);
     }
 
     public List<Historico> listarHistorico() {
         return historicoRepository.findAll();
+    }
+
+    public Historico buscarHistoricoPorId(Long id) {
+        return historicoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Historico não encontrado."));
     }
 }

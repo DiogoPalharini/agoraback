@@ -29,6 +29,6 @@ public class Arquivo {
     private boolean aprovado; // Certifique-se de que este campo está presente
 
     @ManyToOne
-    @JoinColumn(name = "projeto_id", nullable = false)
+    @JoinColumn(name = "projeto_id", nullable = true)
     private Projeto projeto;
 }

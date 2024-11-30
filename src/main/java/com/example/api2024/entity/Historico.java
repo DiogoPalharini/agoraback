@@ -5,9 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @NoArgsConstructor
@@ -32,11 +30,11 @@ public class Historico {
 
     @Lob
     @Column(nullable = true, columnDefinition = "TEXT")
-    private String dadosAntigos;
+    private String arquivos;
 
     @Lob
     @Column(nullable = true, columnDefinition = "TEXT")
-    private String dadosNovos;
+    private String dados;
 
     @Column(nullable = false)
     @DateTimeFormat(pattern = "yyyy-MM-dd")

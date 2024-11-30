@@ -18,4 +18,9 @@ public interface ArquivoRepository extends JpaRepository<Arquivo, Long> {
     @Transactional
     @Query("DELETE FROM Arquivo a WHERE a.projeto.id = :projetoId")
     void deleteByProjetoId(@Param("projetoId") Long projetoId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Arquivo a SET a.projeto.id = null WHERE a.id = :arquivoId")
+    void deleteProjetoId(@Param("arquivoId") Long arquivoId);
 }

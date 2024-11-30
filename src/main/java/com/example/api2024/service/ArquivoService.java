@@ -48,4 +48,9 @@ public class ArquivoService {
         }
         return null;
     }
+
+    public void deletarProjetoemArquivo(Long projetoId) {
+        arquivoRepository.deleteProjetoId(projetoId);
+    }
+
 }

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/projeto")
@@ -76,6 +77,8 @@ public class ProjetoController {
 
     }
 
+    // quero que você coloque mais um parametro para editar projeto, que é Long admAlterador
+
     // Endpoint para editar um projeto existente
     @PutMapping("/editar/{id}")
     public ResponseEntity<Projeto> editarProjeto(
@@ -110,8 +113,10 @@ public class ProjetoController {
 
 
     // Endpoint para excluir um projeto
-    @DeleteMapping("/excluir/{id}")
-    public void excluirProjeto(@PathVariable Long id) throws JsonProcessingException {
-        projetoService.excluirProjeto(id);
+    @DeleteMapping("/excluir")
+    public void excluirProjeto(@RequestBody Map<String, Long> informacaoProjeto) throws JsonProcessingException {
+        Long id = informacaoProjeto.get("id");
+        Long admAlterador = informacaoProjeto.get("admAlterador");
+        projetoService.excluirProjeto(id, admAlterador);
     }
 }

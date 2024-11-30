@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.example.api2024.service.HistoricoService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
@@ -16,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 import com.example.api2024.entity.Adm;
 import com.example.api2024.repository.AdmRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -33,6 +36,12 @@ public class AdmController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private HistoricoService historicoService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // Listar todos os administradores
     @GetMapping("/listar")
@@ -71,18 +80,18 @@ public class AdmController {
     @PostMapping("/criar")
     public ResponseEntity<Map<String, String>> criarAdm(
         @RequestBody Adm novoAdm,
-        @RequestParam Long idSuperAdm) {
+        @RequestParam Long idSuperAdm) throws JsonProcessingException {
     Optional<Adm> superAdm = admRepository.findById(idSuperAdm);
 
     if (superAdm.isEmpty() || !"1".equals(superAdm.get().getTipo())) {
         return ResponseEntity.status(403).body(Map.of("message", "Acesso negado: Apenas super administradores podem criar novos administradores."));
     }
-    
+
     novoAdm.setSenha("12345678");
 
     String token = UUID.randomUUID().toString();
     novoAdm.setTokenRedefinicao(token);
-    admRepository.save(novoAdm);
+    Adm novoAdministrador = admRepository.save(novoAdm);
 
     // Retorna a resposta imediatamente
     ResponseEntity<Map<String, String>> response = ResponseEntity.ok(Map.of("message", "Administrador criado com sucesso!"));
@@ -96,7 +105,15 @@ public class AdmController {
         }
     });
 
-    return response;
+        historicoService.cadastrarHistorico(
+            idSuperAdm,
+            "criacao",
+            "admin",
+            novoAdministrador.getId(),
+            objectMapper.writeValueAsString(novoAdministrador),
+            null
+    );
+        return response;
 }
     
     private void enviarEmailBoasVindas(String emailDestino, String token) throws MessagingException {
@@ -145,7 +162,7 @@ public class AdmController {
     public ResponseEntity<String> atualizarAdm(
             @PathVariable Long id,
             @RequestBody Adm admAtualizado,
-            @RequestParam Long idSuperAdm) {
+            @RequestParam Long idSuperAdm) throws JsonProcessingException {
 
         Optional<Adm> superAdm = admRepository.findById(idSuperAdm);
 
@@ -165,7 +182,17 @@ public class AdmController {
             adm.setSenha(admAtualizado.getSenha());
             adm.setTipo(admAtualizado.getTipo());
             adm.setAtivo(admAtualizado.getAtivo());
-            admRepository.save(adm);
+            Adm novoAdministrador = admRepository.save(adm);
+
+            historicoService.cadastrarHistorico(
+                    idSuperAdm,
+                    "edicao",
+                    "admin",
+                    novoAdministrador.getId(),
+                    objectMapper.writeValueAsString(novoAdministrador),
+                    null
+            );
+
             return ResponseEntity.ok("Administrador atualizado com sucesso!");
         } else {
             return ResponseEntity.notFound().build();
@@ -173,8 +200,8 @@ public class AdmController {
     }
     
     // Atualizar o status ativo do administrador por ID
-    @PatchMapping("/atualizarStatus/{id}")
-    public ResponseEntity<String> patchStatus(@PathVariable Long id, @RequestBody Adm admStatus) {
+    @PatchMapping("/atualizarStatus/{id}/{idSuperAdm}")
+    public ResponseEntity<String> patchStatus(@PathVariable Long id, @PathVariable Long idSuperAdm, @RequestBody Adm admStatus) throws JsonProcessingException {
         Optional<Adm> admExistente = admRepository.findById(id);
 
         if (admExistente.isPresent()) {
@@ -189,6 +216,17 @@ public class AdmController {
             admRepository.save(adm);
 
             String status = novoStatus ? "ativado" : "desativado";
+            String alteracao = novoStatus ? "ativacao" : "desativacao";
+
+            historicoService.cadastrarHistorico(
+                    idSuperAdm,
+                    alteracao,
+                    "admin",
+                    adm.getId(),
+                    objectMapper.writeValueAsString(adm),
+                    null
+            );
+
             return ResponseEntity.ok("Administrador " + status + " com sucesso!");
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Administrador não encontrado.");
@@ -200,7 +238,7 @@ public class AdmController {
     @DeleteMapping("/excluir/{id}")
     public ResponseEntity<String> excluirAdm(
             @PathVariable Long id,
-            @RequestParam Long idSuperAdm) {
+            @RequestParam Long idSuperAdm) throws JsonProcessingException {
 
         Optional<Adm> superAdm = admRepository.findById(idSuperAdm);
 
@@ -209,6 +247,17 @@ public class AdmController {
             return ResponseEntity.status(403)
                     .body("Acesso negado: Apenas super administradores podem excluir administradores.");
         }
+
+        Optional<Adm> administrador = admRepository.findById(id);
+
+        historicoService.cadastrarHistorico(
+                idSuperAdm,
+                "delecao",
+                "admin",
+                id,
+                objectMapper.writeValueAsString(administrador),
+                null
+        );
 
         admRepository.deleteById(id);
         return ResponseEntity.ok("Administrador excluído com sucesso.");

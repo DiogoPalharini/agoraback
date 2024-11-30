@@ -16,8 +16,8 @@ public class HistoricoDto {
     private String alteracao;
     private String alterado;
     private Long idAlterado;
-    private String dadosAntigos;
-    private String dadosNovos;
+    private String arquivos;
+    private String dados;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate dataAlteracao;
