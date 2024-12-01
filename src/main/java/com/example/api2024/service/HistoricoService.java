@@ -31,6 +31,13 @@ public class HistoricoService {
                 .orElse(null);
     }
 
+    public Historico buscarUltimoHistoricoPorIdAlteradoEIdHistorico(Long idAlterado, String alterado, Long idHistorico) {
+        return historicoRepository.findHistoricosByIdAlteradoEIdHistorico(idAlterado, alterado, idHistorico)
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
     public List<Historico> listarHistorico() {
         return historicoRepository.findAll();
     }

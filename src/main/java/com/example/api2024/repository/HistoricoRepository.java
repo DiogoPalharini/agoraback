@@ -12,4 +12,8 @@ import java.util.List;
 public interface HistoricoRepository extends JpaRepository<Historico, Long> {
     @Query("SELECT h FROM Historico h WHERE h.idAlterado = :idAlterado AND h.alterado = :alterado ORDER BY h.id DESC")
     List<Historico> findHistoricosByIdAlterado(@Param("idAlterado") Long idAlterado, @Param("alterado") String alterado);
+
+    @Query("SELECT h FROM Historico h WHERE h.idAlterado = :idAlterado AND h.alterado = :alterado AND h.id < :idHistorico ORDER BY h.id DESC")
+    List<Historico> findHistoricosByIdAlteradoEIdHistorico(@Param("idAlterado") Long idAlterado, @Param("alterado") String alterado, @Param("idHistorico") Long idHistorico);
 }
+

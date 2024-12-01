@@ -20,9 +20,9 @@ public class HistoricoController {
         return historicoService.listarHistorico();
     }
 
-    @GetMapping("/ultimo/{idAlterado}/{alterado}")
-    public ResponseEntity<?> buscarUltimoHistorico(@PathVariable Long idAlterado, @PathVariable String alterado) {
-        Historico historico = historicoService.buscarUltimoHistoricoPorIdAlterado(idAlterado, alterado);
+    @GetMapping("/ultimo/{idAlterado}/{alterado}/{idHistorico}")
+    public ResponseEntity<?> buscarUltimoHistorico(@PathVariable Long idAlterado, @PathVariable String alterado, @PathVariable Long idHistorico) {
+        Historico historico = historicoService.buscarUltimoHistoricoPorIdAlteradoEIdHistorico(idAlterado, alterado, idHistorico);
         if (historico == null) {
             return ResponseEntity.notFound().build();
         }
