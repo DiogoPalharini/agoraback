@@ -119,7 +119,14 @@ public class PermissaoService {
             Projeto novoProjeto = projetoRepository.save(projeto);
 
             // Transferir arquivos relacionados à permissão para o projeto
-            List <Long> jsonIds = transferirArquivosParaProjeto(permissao, novoProjeto);
+            List<Long> jsonIds = transferirArquivosParaProjeto(permissao, novoProjeto);
+
+            // Atualizar o campo "aprovado" para true nos arquivos associados ao projeto
+            if (!jsonIds.isEmpty()) {
+                List<Arquivo> arquivos = arquivoRepository.findAllById(jsonIds);
+                arquivos.forEach(arquivo -> arquivo.setAprovado(true)); // Define como aprovado
+                arquivoRepository.saveAll(arquivos); // Salva as alterações no banco
+            }
 
             // Associar o projeto à permissão
             permissao.setProjeto(novoProjeto);

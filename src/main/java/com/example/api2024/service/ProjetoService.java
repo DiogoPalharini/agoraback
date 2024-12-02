@@ -1,5 +1,6 @@
 package com.example.api2024.service;
 
+import com.example.api2024.dto.ArquivoDto;
 import com.example.api2024.dto.ProjetoDto;
 import com.example.api2024.entity.*;
 import com.example.api2024.repository.ArquivoRepository;
@@ -93,16 +94,32 @@ public class ProjetoService {
 
         // Salvando os arquivos e adicionando os IDs à lista se não forem nulos
         Long idPropostas = null;
-        if (propostas != null) idPropostas = salvarArquivo(propostas, projeto, "Propostas");
-        if (idPropostas != null) ids.add(idPropostas);
+        if (propostas != null) {
+            Arquivo arquivoPropostas = arquivoService.salvarArquivo(propostas, projeto, "Propostas", true);
+            if (arquivoPropostas != null) {
+                idPropostas = arquivoPropostas.getId(); // Pegue o ID do arquivo retornado
+                ids.add(idPropostas); // Adicione o ID à lista
+            }
+        }
 
         Long idContratos = null;
-        if (contratos != null) idContratos = salvarArquivo(contratos, projeto, "Contratos");
-        if (idContratos != null) ids.add(idContratos);
+        if (contratos != null) {
+            Arquivo arquivoContratos = arquivoService.salvarArquivo(contratos, projeto, "Contratos", true);
+            if (arquivoContratos != null) {
+                idContratos = arquivoContratos.getId();
+                ids.add(idContratos);
+            }
+        }
 
         Long idArtigos = null;
-        if (artigos != null) idArtigos = salvarArquivo(artigos, projeto, "Artigos");
-        if (idArtigos != null) ids.add(idArtigos);
+        if (artigos != null) {
+            Arquivo arquivoArtigos = arquivoService.salvarArquivo(artigos, projeto, "Artigos", true);
+            if (arquivoArtigos != null) {
+                idArtigos = arquivoArtigos.getId();
+                ids.add(idArtigos);
+            }
+        }
+
 
         // Converter a lista para JSON e armazenar no banco
         String jsonIds = ids.toString();
@@ -123,7 +140,7 @@ public class ProjetoService {
     }
 
     // Método para salvar arquivos
-    private Long salvarArquivo(MultipartFile file, Projeto projeto, String tipoDocumento) throws IOException {
+    public Arquivo salvarArquivo(MultipartFile file, Projeto projeto, String tipoDocumento) throws IOException {
         if (file != null && !file.isEmpty()) {
             Arquivo arquivo = new Arquivo();
             arquivo.setNomeArquivo(file.getOriginalFilename());
@@ -131,11 +148,12 @@ public class ProjetoService {
             arquivo.setConteudo(file.getBytes());
             arquivo.setTipoDocumento(tipoDocumento);
             arquivo.setProjeto(projeto);
-            Arquivo arquivoExistente = arquivoRepository.save(arquivo);
-            return arquivoExistente.getId();
+            arquivo.setAprovado(true); // Sempre marca como aprovado ao adicionar
+            return arquivoRepository.save(arquivo);
         }
         return null;
     }
+
 
     public List<Long> atualizarListaArquivos(String idsArquivosAntigos, String idsArquivosExcluidos) {
         // Converter a string de IDs de arquivos antigos para uma lista de Long
@@ -188,88 +206,63 @@ public class ProjetoService {
         projetoExistente.setDataInicio(projetoDto.getDataInicio());
         projetoExistente.setDataTermino(projetoDto.getDataTermino());
 
-        // Verificar situação
+        // Verificar situação do projeto
         String situacao = projetoDto.getDataTermino().isAfter(LocalDate.now()) ? "Em Andamento" : "Encerrado";
         projetoExistente.setSituacao(situacao);
 
-        // Excluir arquivos se solicitado
-        List<Long> idsArquivosExcluidos = new ArrayList<>();
+        // Desativar arquivos se necessário
         if (arquivosExcluidos != null && !arquivosExcluidos.isEmpty()) {
             for (Long arquivoId : arquivosExcluidos) {
-                arquivoService.deletarProjetoemArquivo(arquivoId);
-                idsArquivosExcluidos.add(arquivoId);
+                arquivoService.desativarArquivo(arquivoId); // Exclusão lógica
             }
         }
-        String IdsArquivosExcluidos = idsArquivosExcluidos.toString();
 
-        Historico ultimoHistorico = historicoService.buscarUltimoHistoricoPorIdAlterado(id, "projeto");
-        String idsArquivosAntigos = ultimoHistorico.getArquivos();
-
-        List<Long> idsArquivosAtualizados;
-        idsArquivosAtualizados = atualizarListaArquivos(idsArquivosAntigos, IdsArquivosExcluidos);
-
-        List<Long> ids = new ArrayList<>();
-
-        // Salvando os arquivos e adicionando os IDs à lista se não forem nulos
-        Long idPropostas = null;
-        if (propostas != null) idPropostas = salvarArquivo(propostas, projetoExistente, "Propostas");
-        if (idPropostas != null) ids.add(idPropostas);
-
-        Long idContratos = null;
-        if (contratos != null) idContratos = salvarArquivo(contratos, projetoExistente, "Contratos");
-        if (idContratos != null) ids.add(idContratos);
-
-        Long idArtigos = null;
-        if (artigos != null) idArtigos = salvarArquivo(artigos, projetoExistente, "Artigos");
-        if (idArtigos != null) ids.add(idArtigos);
-
-        // Converter a lista para JSON e armazenar no banco
-        idsArquivosAtualizados.addAll(ids);
-        String jsonIds = idsArquivosAtualizados.toString();
-
-        Long AdmAtualDoProjeto = projetoDto.getAdm();
-        historicoService.cadastrarHistorico(
-                AdmAtualDoProjeto,
-                "edicao",
-                "projeto",
-                projetoExistente.getId(),
-                objectMapper.writeValueAsString(projetoExistente),
-                jsonIds
-        );
+        // Adicionar novos arquivos
+        if (propostas != null) {
+            arquivoService.salvarArquivo(propostas, projetoExistente, "Propostas", true);
+        }
+        if (contratos != null) {
+            arquivoService.salvarArquivo(contratos, projetoExistente, "Contratos", true);
+        }
+        if (artigos != null) {
+            arquivoService.salvarArquivo(artigos, projetoExistente, "Artigos", true);
+        }
 
         return projetoRepository.save(projetoExistente);
     }
 
+
+
+
     // Método para excluir um projeto e seus arquivos associados
     @Transactional
     public void excluirProjeto(Long id, Long admAlterador) {
+        // Buscar o projeto
         Projeto projeto = buscarProjetoPorId(id);
-        Long adminAtual = admAlterador;
 
+        // Atualizar o status do projeto (ou outro campo que indique exclusão lógica)
+        projeto.setSituacao("Desativado");
+        projetoRepository.save(projeto);
+
+        // Atualizar os arquivos relacionados para "desativados"
+        List<Arquivo> arquivos = arquivoRepository.findByProjetoId(projeto.getId());
+        if (!arquivos.isEmpty()) {
+            arquivos.forEach(arquivo -> arquivo.setAprovado(false)); // Marca os arquivos como não aprovados
+            arquivoRepository.saveAll(arquivos); // Salva as alterações no banco
+        }
+
+        // Registrar no histórico a desativação do projeto
         historicoService.cadastrarHistorico(
-                adminAtual,
-                "delecao",
+                admAlterador,
+                "desativacao",
                 "projeto",
                 projeto.getId(),
                 null,
                 null
         );
-
-        List<Permissao> permissoes = permissaoRepository.findByProjetoId(projeto.getId());
-        if (!permissoes.isEmpty()) {
-            permissaoRepository.deleteAll(permissoes);
-        }
-
-        List<Arquivo> arquivos = arquivoRepository.findByProjetoId(projeto.getId());
-        if (!arquivos.isEmpty() && arquivos != null) {
-            for (Arquivo arquivo : arquivos) {
-                arquivoRepository.deleteProjetoId(arquivo.getId());
-            }
-        }
-
-        projetoRepository.delete(projeto);
     }
-    
+
+
     public String calcularProximaReferencia() {
         int anoAtual = LocalDate.now().getYear() % 100;
         List<Integer> numerosUtilizados = projetoRepository.findAll()

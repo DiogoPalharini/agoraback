@@ -19,6 +19,7 @@ public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
 
+    // Buscar arquivos por ID do projeto
     public List<ArquivoDto> getArquivosByProjetoId(Long projetoId) {
         List<Arquivo> arquivos = arquivoRepository.findByProjetoIdAndAprovadoTrue(projetoId);
         return arquivos.stream()
@@ -31,10 +32,12 @@ public class ArquivoService {
                 )).collect(Collectors.toList());
     }
 
+    // Buscar arquivo por ID
     public Optional<Arquivo> getArquivoById(Long arquivoId) {
         return arquivoRepository.findById(arquivoId);
     }
 
+    // Salvar arquivo (definir aprovado como true)
     public Arquivo salvarArquivo(MultipartFile file, Projeto projeto, String tipoDocumento, boolean aprovado) throws IOException {
         if (file != null && !file.isEmpty()) {
             Arquivo arquivo = new Arquivo();
@@ -43,14 +46,17 @@ public class ArquivoService {
             arquivo.setConteudo(file.getBytes());
             arquivo.setTipoDocumento(tipoDocumento);
             arquivo.setProjeto(projeto);
-            arquivo.setAprovado(aprovado);
+            arquivo.setAprovado(aprovado); // Define o estado de aprovação
             return arquivoRepository.save(arquivo);
         }
         return null;
     }
 
-    public void deletarProjetoemArquivo(Long projetoId) {
-        arquivoRepository.deleteProjetoId(projetoId);
+    // Desativar arquivo (exclusão lógica)
+    public void desativarArquivo(Long arquivoId) {
+        Arquivo arquivo = arquivoRepository.findById(arquivoId)
+                .orElseThrow(() -> new RuntimeException("Arquivo não encontrado com ID: " + arquivoId));
+        arquivo.setAprovado(false); // Atualiza o campo para exclusão lógica
+        arquivoRepository.save(arquivo); // Persiste a alteração
     }
-
 }

@@ -1,5 +1,6 @@
 package com.example.api2024.controller;
 
+import com.example.api2024.dto.ArquivoDto;
 import com.example.api2024.dto.ProjetoDto;
 import com.example.api2024.entity.Projeto;
 import com.example.api2024.service.ProjetoService;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -90,9 +92,12 @@ public class ProjetoController {
             @RequestParam(value = "arquivosExcluidos", required = false) List<Long> arquivosExcluidos) throws IOException {
 
         try {
+            // Converte o JSON do projeto recebido para um objeto ProjetoDto
             ProjetoDto projetoDto = objectMapper.readValue(projetoJson, ProjetoDto.class);
 
+            // Chama o método do service passando apenas os parâmetros esperados
             Projeto projetoAtualizado = projetoService.editarProjeto(id, projetoDto, propostas, contratos, artigos, arquivosExcluidos);
+
             return ResponseEntity.ok(projetoAtualizado);
         } catch (Exception e) {
             System.err.println("Erro ao processar a requisição: " + e.getMessage());
@@ -100,7 +105,9 @@ public class ProjetoController {
             return ResponseEntity.badRequest().build();
         }
     }
-    
+
+
+
     @GetMapping("/proxima-referencia")
     public ResponseEntity<String> obterProximaReferencia() {
         try {

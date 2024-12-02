@@ -1,16 +1,21 @@
 package com.example.api2024.dto;
 
-public class ArquivoDto {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class ArquivoDto {
     private Long id;
     private String nomeArquivo;
     private String tipoDocumento;
     private Long projetoId;
     private String tipoArquivo;
-    private byte[] conteudo;
 
-    public ArquivoDto() {
-    }
+    // O conteúdo do arquivo será incluído apenas quando necessário
+    private byte[] conteudo;
 
     public ArquivoDto(Long id, String nomeArquivo, String tipoDocumento, Long projetoId, String tipoArquivo) {
         this.id = id;
@@ -18,53 +23,5 @@ public class ArquivoDto {
         this.tipoDocumento = tipoDocumento;
         this.projetoId = projetoId;
         this.tipoArquivo = tipoArquivo;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNomeArquivo() {
-        return nomeArquivo;
-    }
-
-    public void setNomeArquivo(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
-    }
-
-    public String getTipoDocumento() {
-        return tipoDocumento;
-    }
-
-    public void setTipoDocumento(String tipoDocumento) {
-        this.tipoDocumento = tipoDocumento;
-    }
-
-    public Long getProjetoId() {
-        return projetoId;
-    }
-
-    public void setProjetoId(Long projetoId) {
-        this.projetoId = projetoId;
-    }
-
-    public String getTipoArquivo() {
-        return tipoArquivo;
-    }
-
-    public void setTipoArquivo(String tipoArquivo) {
-        this.tipoArquivo = tipoArquivo;
-    }
-
-    public byte[] getConteudo() {
-        return conteudo;
-    }
-
-    public void setConteudo(byte[] conteudo) {
-        this.conteudo = conteudo;
     }
 }
