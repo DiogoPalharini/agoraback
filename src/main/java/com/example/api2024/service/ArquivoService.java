@@ -59,4 +59,21 @@ public class ArquivoService {
         arquivo.setAprovado(false); // Atualiza o campo para exclusão lógica
         arquivoRepository.save(arquivo); // Persiste a alteração
     }
+
+    public List<ArquivoDto> getArquivosByIds(List<Long> ids) {
+        List<Arquivo> arquivos = arquivoRepository.findAllById(ids);
+        return arquivos.stream()
+                .map(arquivo -> {
+                    Long projetoId = arquivo.getProjeto() != null ? arquivo.getProjeto().getId() : null;
+                    return new ArquivoDto(
+                            arquivo.getId(),
+                            arquivo.getNomeArquivo(),
+                            arquivo.getTipoDocumento(),
+                            projetoId, // Pode ser null
+                            arquivo.getTipoArquivo()
+                    );
+                }).toList();
+    }
+
+
 }
