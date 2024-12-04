@@ -210,15 +210,19 @@ public class ProjetoService {
         String situacao = projetoDto.getDataTermino().isAfter(LocalDate.now()) ? "Em Andamento" : "Encerrado";
         projetoExistente.setSituacao(situacao);
 
-        // Desvincular arquivos excluídos do projeto
+        // Lista de IDs de arquivos desativados
+        String arquivosDesativadosJson = null;
         if (arquivosExcluidos != null && !arquivosExcluidos.isEmpty()) {
+            List<Long> idsDesativados = new ArrayList<>();
             for (Long arquivoId : arquivosExcluidos) {
                 Arquivo arquivo = arquivoRepository.findById(arquivoId)
                         .orElseThrow(() -> new RuntimeException("Arquivo não encontrado com ID: " + arquivoId));
                 arquivo.setProjeto(null); // Desvincula o projeto
                 arquivo.setAprovado(false); // Marca como inativo
                 arquivoRepository.save(arquivo); // Atualiza o estado no banco
+                idsDesativados.add(arquivoId); // Adiciona o ID à lista
             }
+            arquivosDesativadosJson = objectMapper.writeValueAsString(idsDesativados); // Serializa IDs desativados
         }
 
         // Adicionar novos arquivos
@@ -232,11 +236,26 @@ public class ProjetoService {
             arquivoService.salvarArquivo(artigos, projetoExistente, "Artigos", true);
         }
 
+        // Cadastrar histórico da edição
+        String dadosProjeto = "{}";
+        try {
+            dadosProjeto = objectMapper.writeValueAsString(projetoExistente);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao serializar os dados do projeto para o histórico: " + e.getMessage());
+        }
+
+        historicoService.cadastrarHistorico(
+                projetoDto.getAdm(), // ID do administrador responsável
+                "edicao",           // Tipo de alteração
+                "projeto",          // Tipo do alvo
+                projetoExistente.getId(), // ID do projeto alterado
+                dadosProjeto,       // Dados do projeto atualizado
+                arquivosDesativadosJson // Apenas os IDs dos arquivos excluídos
+        );
+
         // Retorna o projeto atualizado
         return projetoRepository.save(projetoExistente);
     }
-
-
 
 
 
